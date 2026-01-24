@@ -13,16 +13,13 @@ const server = createServer();
 const io = new Server(server, {
   cors: {
     origin: process.env.NEXT_URL,
-    credentials: true,
   },
 });
 //прослойка
 io.use(async (socket, next) => {
   try {
-    const headersCookie = socket.handshake.headers.cookie;
-    const cookies = parseCookie(headersCookie);
-    const token = cookies.token;
-    const validToken = validateJWT(token);
+    const token = socket.handshake.auth;
+    const validToken = validateJWT(token.token.value);
     if (validToken) {
       socket.userData = validToken;
     } else {
