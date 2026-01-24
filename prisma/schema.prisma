@@ -1,0 +1,233 @@
+generator client {
+    provider = "prisma-client"
+    output   = "./generated"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+enum VerificationStatus {
+    Yes
+    No
+}
+
+enum VisibleCategories {
+    All
+    Admin
+}
+
+enum ReactionType {
+    up
+    like
+    down
+}
+
+enum ActivityType {
+    message
+    status
+    reaction
+}
+
+model Users {
+    id                 String             @id @default(uuid())
+    login              String             @unique
+    password           String
+    email              String             @unique
+    role               String             @default("User")
+    avatar             String?
+    verification       String
+    verificationAdm    VerificationStatus @default(No)
+    createdAt          DateTime           @default(now())
+    recoveryCode       String?
+    dateRecoveryCode   DateTime?
+    devices            Devices[]
+    warns              Warns[]
+    bans               Bans[]
+    Unwarns            Unwarns[]
+    Unbans             Unbans[]
+    Posts              Posts[]
+    MessagesPosts      MessagesPosts[]
+    encryptedData      String?
+    iv                 String?
+    authTag            String?
+    isTwoFactorEnabled Boolean            @default(false)
+    HistoryMessage     HistoryMessage[]
+    statuses           Statuses[]
+    activityUser       ActivityUser[]
+    sentReactions      Reaction[]         @relation("sentReactions")
+    receivedReactions  Reaction[]         @relation("receivedReactions")
+    reputation         Int                @default(0)
+    isOnline           Boolean            @default(false)
+    lastSeen           DateTime?
+
+    @@index([login])
+    @@index([createdAt])
+}
+
+model ActivityUser {
+    id           String         @id @default(uuid())
+    createdAt    DateTime       @default(now())
+    idUser       String
+    user         Users          @relation(fields: [idUser], references: [id])
+    messId       String?        @unique
+    mess         MessagesPosts? @relation(fields: [messId], references: [id], onDelete: Cascade)
+    statusId     String?        @unique
+    status       Statuses?      @relation(fields: [statusId], references: [id], onDelete: Cascade)
+    activityType ActivityType
+    reactionId   String?
+    reaction     Reaction?      @relation(fields: [reactionId], references: [id], onDelete: Cascade)
+
+    @@index([reactionId])
+    @@index([createdAt])
+}
+
+model Reaction {
+    id              String         @id @default(uuid())
+    activityUser    ActivityUser[]
+    messagesPosts   MessagesPosts  @relation(fields: [messagesPostsId], references: [id])
+    messagesPostsId String
+    reactionType    ReactionType
+    createdAt       DateTime       @default(now())
+    fromUserId      String
+    fromUser        Users          @relation("sentReactions", fields: [fromUserId], references: [id], onDelete: Cascade)
+    toUserId        String
+    toUser          Users          @relation("receivedReactions", fields: [toUserId], references: [id], onDelete: Cascade)
+}
+
+model Statuses {
+    id           String        @id @default(uuid())
+    idUser       String
+    text         String
+    createdAt    DateTime      @default(now())
+    user         Users         @relation(fields: [idUser], references: [id])
+    activityUser ActivityUser?
+
+    @@index([createdAt])
+}
+
+model Categories {
+    id            String            @id @default(uuid())
+    title         String
+    position      Int
+    visible       VisibleCategories @default(All)
+    subCategories SubCategories[]
+}
+
+model SubCategories {
+    id           String     @id @default(uuid())
+    title        String
+    idCategories String
+    position     Int
+    icon         String
+    change       Boolean    @default(true)
+    visible      Boolean    @default(true)
+    Categories   Categories @relation(fields: [idCategories], references: [id], onDelete: Cascade)
+    posts        Posts[]
+}
+
+model Posts {
+    id              String          @id @default(uuid())
+    title           String
+    idSubCategories String
+    SubCategories   SubCategories   @relation(fields: [idSubCategories], references: [id], onDelete: Cascade)
+    idUser          String
+    user            Users           @relation(fields: [idUser], references: [id])
+    createdAt       DateTime        @default(now())
+    locked          Boolean         @default(false)
+    pinned          Boolean         @default(false)
+    MessagesPosts   MessagesPosts[]
+    lastUpdate      DateTime        @default(now())
+
+    @@index([createdAt])
+    @@index([lastUpdate])
+}
+
+model MessagesPosts {
+    id             String           @id @default(uuid())
+    text           Json
+    createdAt      DateTime         @default(now())
+    idUser         String
+    Users          Users            @relation(fields: [idUser], references: [id])
+    idPosts        String
+    Posts          Posts            @relation(fields: [idPosts], references: [id], onDelete: Cascade)
+    HistoryMessage HistoryMessage[]
+    activityUsers  ActivityUser[]
+    reactions      Reaction[]
+
+    @@index([createdAt])
+}
+
+model HistoryMessage {
+    id            String        @id @default(uuid())
+    updateAt      DateTime      @default(now())
+    idUser        String
+    idMessage     String
+    beforeText    Json
+    afterText     Json
+    Users         Users         @relation(fields: [idUser], references: [id], onDelete: Cascade)
+    MessagesPosts MessagesPosts @relation(fields: [idMessage], references: [id], onDelete: Cascade)
+
+    @@index([updateAt])
+}
+
+model Devices {
+    id         String @id @default(uuid())
+    userId     String
+    user       Users  @relation(fields: [userId], references: [id], onDelete: Cascade)
+    token      String @unique
+    deviceType String
+    deviceId   String @unique
+}
+
+model Warns {
+    id      String   @id @default(uuid())
+    idUser  String
+    reason  String
+    date    DateTime @default(now())
+    user    Users    @relation(fields: [idUser], references: [id], onDelete: Cascade)
+    admin   String
+    Unwarns Unwarns?
+
+    @@index([date])
+}
+
+model Bans {
+    id         String    @id @default(uuid())
+    idUser     String
+    reason     String
+    date       DateTime  @default(now())
+    time       Int
+    user       Users     @relation(fields: [idUser], references: [id], onDelete: Cascade)
+    admin      String
+    unbansDate DateTime?
+    Unbans     Unbans?
+
+    @@index([date])
+}
+
+model Unwarns {
+    id     String   @id @default(uuid())
+    idWarn String   @unique
+    warn   Warns    @relation(fields: [idWarn], references: [id])
+    idUser String
+    reason String
+    date   DateTime @default(now())
+    user   Users    @relation(fields: [idUser], references: [id], onDelete: Cascade)
+    admin  String
+
+    @@index([date])
+}
+
+model Unbans {
+    id     String   @id @default(uuid())
+    idBan  String   @unique
+    ban    Bans     @relation(fields: [idBan], references: [id])
+    idUser String
+    reason String
+    date   DateTime @default(now())
+    user   Users    @relation(fields: [idUser], references: [id], onDelete: Cascade)
+    admin  String
+
+    @@index([date])
+}
