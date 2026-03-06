@@ -10,6 +10,7 @@ import { uuidv7 } from "uuidv7";
 import { encrypt } from "./encrypt.js";
 let listOnline = [];
 let listDeletingChat = [];
+let listChatsTyping = [];
 //настройка конфига и сервера
 configDotenv({ path: join(__dirname, ".env") });
 const server = createServer();
@@ -186,6 +187,7 @@ io.on("connection", async (socket) => {
         io.to(chatId).emit("newMessage", {
           newMessage: newChat.MessagesChats[0],
         });
+
         io.to([loginRecipient, loginSender]).emit("createNewChat", {
           id: newChat.id,
           lastMessageTime: newChat.lastMessageTime,
@@ -244,10 +246,14 @@ io.on("connection", async (socket) => {
       });
     }
     socket.emit("successful");
+    socket.to(loginRecipient).emit("userStopWriting", { login: loginSender });
+    listChatsTyping = listChatsTyping.filter((val) => {
+      val.chatId !== chatId;
+    });
   });
   // Эмит на реконнект
-  if (socket.rooms.size === 2) {
-    socket.emit("reconnect");
+  if (socket.rooms.size >= 1) {
+    socket.emit("reconnect", { listChatsTyping, userLogin: user.login });
   }
   // Удаление чатов
   socket.on("deleteChat", async (data) => {
@@ -276,6 +282,21 @@ io.on("connection", async (socket) => {
         listDeletingChat = listDeletingChat.filter((val) => val !== id);
       }
     }
+  });
+  socket.on("writing", async (data) => {
+    listChatsTyping = Array.from(
+      new Set([
+        ...listChatsTyping,
+        { chatId: data.chatId, typingUser: user.login },
+      ]),
+    );
+    socket.to(data.loginChat).emit("userWriting", { login: user.login });
+  });
+  socket.on("stopWriting", async (data) => {
+    listChatsTyping = listChatsTyping.filter((val) => {
+      val.chatId !== data.chatId;
+    });
+    socket.to(data.loginChat).emit("userStopWriting", { login: user.login });
   });
 });
 
