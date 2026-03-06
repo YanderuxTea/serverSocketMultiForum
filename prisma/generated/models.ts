@@ -9,6 +9,8 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/Users.ts'
+export type * from './models/Chats.ts'
+export type * from './models/MessagesChats.ts'
 export type * from './models/ActivityUser.ts'
 export type * from './models/Reaction.ts'
 export type * from './models/Statuses.ts'

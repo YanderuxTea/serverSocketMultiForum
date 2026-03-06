@@ -23,6 +23,16 @@ export * from './enums.ts';
  */
 export type Users = Prisma.UsersModel
 /**
+ * Model Chats
+ * 
+ */
+export type Chats = Prisma.ChatsModel
+/**
+ * Model MessagesChats
+ * 
+ */
+export type MessagesChats = Prisma.MessagesChatsModel
+/**
  * Model ActivityUser
  * 
  */
