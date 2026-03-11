@@ -47,6 +47,11 @@ export { Prisma }
  */
 export type Users = Prisma.UsersModel
 /**
+ * Model Notifications
+ * 
+ */
+export type Notifications = Prisma.NotificationsModel
+/**
  * Model Chats
  * 
  */

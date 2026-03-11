@@ -29,6 +29,14 @@ enum ActivityType {
   reaction
 }
 
+enum NotificationType {
+  answer
+  close
+  message
+  reaction
+  rank
+}
+
 model Users {
   id                 String             @id @default(uuid())
   login              String             @unique
@@ -62,9 +70,27 @@ model Users {
   lastSeen           DateTime?
   Chats              Chats[]            @relation("UserChats")
   messagesChats      MessagesChats[]
+  notificationsFrom  Notifications[]    @relation("fromUser")
+  notificationsTo    Notifications[]    @relation("toUser")
 
   @@index([login])
   @@index([createdAt])
+}
+
+model Notifications {
+  id            String           @id @default(uuid(7))
+  type          NotificationType
+  createdAt     DateTime         @default(now())
+  userLoginFrom String
+  userFrom      Users            @relation("fromUser", fields: [userLoginFrom], references: [login], onDelete: Cascade)
+  userLoginTo   String
+  userTo        Users            @relation("toUser", fields: [userLoginTo], references: [login], onDelete: Cascade)
+  isRead        Boolean          @default(false)
+  metaData      Json
+
+  @@index([id])
+  @@index([userLoginTo])
+  @@index([userLoginFrom])
 }
 
 model Chats {
@@ -72,7 +98,8 @@ model Chats {
   MessagesChats   MessagesChats[]
   Users           Users[]         @relation("UserChats")
   lastMessageTime DateTime        @default(now())
-  idV7 String @default(uuid(7))
+  idV7            String          @default(uuid(7))
+
   @@index([lastMessageTime])
 }
 
@@ -84,6 +111,7 @@ model MessagesChats {
   text      String
   author    Users    @relation(fields: [authorId], references: [id])
   authorId  String
+  isRead    Boolean  @default(false)
 }
 
 model ActivityUser {

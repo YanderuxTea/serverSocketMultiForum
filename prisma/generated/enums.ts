@@ -41,3 +41,14 @@ export const ActivityType = {
 } as const
 
 export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType]
+
+
+export const NotificationType = {
+  answer: 'answer',
+  close: 'close',
+  message: 'message',
+  reaction: 'reaction',
+  rank: 'rank'
+} as const
+
+export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]

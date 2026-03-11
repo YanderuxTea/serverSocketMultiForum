@@ -159,12 +159,23 @@ io.on("connection", async (socket) => {
       data.chatId === "recent"
         ? generateChatIdRecentRoom(loginRecipient, loginSender)
         : data.chatId;
+    const room = io.sockets.adapter.rooms.get(chatId);
+    const uniqueLoginList = new Set();
+    for (const sid of room) {
+      const socket = io.sockets.sockets.get(sid);
+      uniqueLoginList.add(socket.userData.login);
+    }
+    const isSoloInChat = uniqueLoginList.size === 1;
     if (data.chatId === "recent") {
       try {
         const newChat = await prisma.chats.create({
           data: {
             MessagesChats: {
-              create: { text: encryptedMessage, authorId: user.id },
+              create: {
+                text: encryptedMessage,
+                authorId: user.id,
+                isRead: !isSoloInChat,
+              },
             },
             Users: {
               connect: [{ login: loginSender }, { login: loginRecipient }],
@@ -178,8 +189,15 @@ io.on("connection", async (socket) => {
               select: { login: true, role: true, avatar: true },
             },
             MessagesChats: {
-              select: { id: true, text: true, createdAt: true, authorId: true },
+              select: {
+                id: true,
+                text: true,
+                createdAt: true,
+                authorId: true,
+                isRead: true,
+              },
             },
+            _count: { select: { MessagesChats: { where: { isRead: false } } } },
             idV7: true,
           },
         });
@@ -194,20 +212,34 @@ io.on("connection", async (socket) => {
           MessagesChats: newChat.MessagesChats,
           Users: newChat.Users,
           newIdV7: newChat.idV7,
+          _count: newChat._count,
         });
+
         io.to([loginRecipient, loginSender]).emit("newMessageReceived", {
           newMessage: newChat.MessagesChats[0],
         });
       } catch {
         const newMessage = await prisma.messagesChats.create({
-          data: { authorId: user.id, chatsId: chatId, text: encryptedMessage },
-          select: { id: true, createdAt: true, text: true, authorId: true },
+          data: {
+            authorId: user.id,
+            chatsId: chatId,
+            text: encryptedMessage,
+            isRead: !isSoloInChat,
+          },
+          select: {
+            id: true,
+            createdAt: true,
+            text: true,
+            authorId: true,
+            isRead: true,
+          },
         });
         const updateDateTime = await prisma.chats.update({
           where: { id: chatId },
           data: { lastMessageTime: new Date(), idV7: uuidv7() },
           select: { lastMessageTime: true, idV7: true },
         });
+
         io.to(chatId).emit("newMessage", {
           newMessage,
           newDate: updateDateTime.lastMessageTime,
@@ -224,8 +256,19 @@ io.on("connection", async (socket) => {
       }
     } else {
       const newMessage = await prisma.messagesChats.create({
-        data: { authorId: user.id, chatsId: chatId, text: encryptedMessage },
-        select: { id: true, createdAt: true, text: true, authorId: true },
+        data: {
+          authorId: user.id,
+          chatsId: chatId,
+          text: encryptedMessage,
+          isRead: !isSoloInChat,
+        },
+        select: {
+          id: true,
+          createdAt: true,
+          text: true,
+          authorId: true,
+          isRead: true,
+        },
       });
       const updateDateTime = await prisma.chats.update({
         where: { id: chatId },
@@ -238,6 +281,7 @@ io.on("connection", async (socket) => {
         newIdV7: updateDateTime.idV7,
         chatId,
       });
+
       io.to([loginRecipient, loginSender]).emit("newMessageReceived", {
         newMessage,
         newDate: updateDateTime.lastMessageTime,
@@ -245,16 +289,141 @@ io.on("connection", async (socket) => {
         chatId,
       });
     }
+
+    if (isSoloInChat) {
+      const newNotify = await prisma.notifications.create({
+        data: {
+          userLoginFrom: loginSender,
+          userLoginTo: loginRecipient,
+          type: "message",
+          metaData: { loginSender: loginSender },
+        },
+      });
+      io.to(loginRecipient).emit("newMessageNotify", {
+        loginRecipient,
+        metaData: newNotify.metaData,
+        idNotify: newNotify.id,
+        createdAt: newNotify.createdAt,
+        typeNotify: newNotify.type,
+      });
+      io.to(loginRecipient).emit("newMessageUnread", { chatId });
+    }
     socket.emit("successful");
     socket.to(loginRecipient).emit("userStopWriting", { login: loginSender });
     listChatsTyping = listChatsTyping.filter((val) => {
-      val.chatId !== chatId;
+      return val.chatId !== chatId;
     });
   });
   // Эмит на реконнект
   if (socket.rooms.size >= 1) {
     socket.emit("reconnect", { listChatsTyping, userLogin: user.login });
   }
+  // Закрытие темы
+  socket.on("themeClose", async (data) => {
+    const loginRecipient = data.login;
+    const loginCloser = user.login;
+    const themeId = data.themeId;
+    const themeTitle = data.themeTitle;
+    const roleCloser = data.roleCloser;
+    const idSubCat = data.idSubCat;
+    const newNotify = await prisma.notifications.create({
+      data: {
+        userLoginFrom: loginCloser,
+        userLoginTo: loginRecipient,
+        type: "close",
+        metaData: { loginCloser, roleCloser, themeId, themeTitle, idSubCat },
+      },
+    });
+    io.to(loginRecipient).emit("yourThemeClose", {
+      loginRecipient,
+      idNotify: newNotify.id,
+      metaData: newNotify.metaData,
+      typeNotify: newNotify.type,
+      createdAt: newNotify.createdAt,
+    });
+  });
+  // Ответ в тему
+  socket.on("answerTheme", async (data) => {
+    const loginRecipient = data.loginAuthor;
+    const loginSender = data.login;
+    if (loginSender === loginRecipient) {
+      return;
+    }
+    const idSubCat = data.idSubCat;
+    const roleSender = data.role;
+    const themeId = data.themeId;
+    const themeTitle = data.themeTitle;
+    const newNotify = await prisma.notifications.create({
+      data: {
+        userLoginFrom: loginSender,
+        userLoginTo: loginRecipient,
+        type: "answer",
+        metaData: { loginSender, roleSender, themeId, themeTitle, idSubCat },
+      },
+    });
+    io.to(loginRecipient).emit("answerInYourTheme", {
+      loginRecipient,
+      idNotify: newNotify.id,
+      typeNotify: newNotify.type,
+      createdAt: newNotify.createdAt,
+      metaData: newNotify.metaData,
+    });
+  });
+  // Реакции
+  socket.on("reaction", async (data) => {
+    const loginSender = data.loginAuthor;
+    const loginRecipient = data.loginRecipient;
+    const reactionType = data.reactionType;
+    const themeId = data.themeId;
+    const roleSender = data.roleAuthor;
+    const themeTitle = data.titleTheme;
+    const idSubCat = data.idSubCat;
+    const newNotify = await prisma.notifications.create({
+      data: {
+        userLoginFrom: loginSender,
+        userLoginTo: loginRecipient,
+        type: "reaction",
+        metaData: {
+          themeId,
+          themeTitle,
+          reactionType,
+          roleSender,
+          loginSender,
+          idSubCat,
+        },
+      },
+    });
+    console.log(
+      `Пользователь ${loginSender} отреагировал в ${newNotify.createdAt}`,
+    );
+
+    io.to(loginRecipient).emit("messageReacted", {
+      loginRecipient,
+      idNotify: newNotify.id,
+      createdAt: newNotify.createdAt,
+      typeNotify: newNotify.type,
+      metaData: newNotify.metaData,
+    });
+  });
+  // Повышение ранга
+  socket.on("rank", async (data) => {
+    const { login, rankLvl } = data;
+    const newNotify = await prisma.notifications.create({
+      data: {
+        userLoginFrom: login,
+        userLoginTo: login,
+        type: "rank",
+        metaData: { rankLvl },
+      },
+    });
+    io.to(login).emit("upRank", {
+      loginRecipient: login,
+      idNotify: newNotify.id,
+      createdAt: newNotify.createdAt,
+      typeNotify: newNotify.type,
+      metaData: newNotify.metaData,
+    });
+  });
   // Удаление чатов
   socket.on("deleteChat", async (data) => {
     const { id, login } = data;
@@ -283,6 +452,7 @@ io.on("connection", async (socket) => {
       }
     }
   });
+  // Статус печатает
   socket.on("writing", async (data) => {
     listChatsTyping = Array.from(
       new Set([
@@ -292,11 +462,36 @@ io.on("connection", async (socket) => {
     );
     socket.to(data.loginChat).emit("userWriting", { login: user.login });
   });
+  // Снятие статуса печатает
   socket.on("stopWriting", async (data) => {
     listChatsTyping = listChatsTyping.filter((val) => {
-      val.chatId !== data.chatId;
+      return val.chatId !== data.chatId;
     });
     socket.to(data.loginChat).emit("userStopWriting", { login: user.login });
+  });
+  // Открытие центра уведомлений
+  socket.on("openNotifyCenter", async () => {
+    io.to(user.login).emit("openNotifyCenterRes");
+  });
+  // Очистка центра уведомлений
+  socket.on("clearNotifyCenter", async () => {
+    await prisma.notifications.deleteMany({
+      where: { userLoginTo: user.login },
+    });
+    setTimeout(() => {
+      io.to(user.login).emit("clearedNotifyCenter", { login: user.login });
+    }, 200);
+  });
+  // Прочитали чат
+  socket.on("readChat", async (data) => {
+    const { chatId, loginChat } = data;
+    const loginUser = user.login;
+    const idUser = user.id;
+    await prisma.messagesChats.updateMany({
+      where: { chatsId: chatId, authorId: { not: idUser }, isRead: false },
+      data: { isRead: true },
+    });
+    io.to([loginChat, loginUser]).emit("chatIsRead", { chatId });
   });
 });
 

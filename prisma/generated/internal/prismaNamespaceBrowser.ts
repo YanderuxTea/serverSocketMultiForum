@@ -52,6 +52,7 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   Users: 'Users',
+  Notifications: 'Notifications',
   Chats: 'Chats',
   MessagesChats: 'MessagesChats',
   ActivityUser: 'ActivityUser',
@@ -109,6 +110,19 @@ export const UsersScalarFieldEnum = {
 export type UsersScalarFieldEnum = (typeof UsersScalarFieldEnum)[keyof typeof UsersScalarFieldEnum]
 
 
+export const NotificationsScalarFieldEnum = {
+  id: 'id',
+  type: 'type',
+  createdAt: 'createdAt',
+  userLoginFrom: 'userLoginFrom',
+  userLoginTo: 'userLoginTo',
+  isRead: 'isRead',
+  metaData: 'metaData'
+} as const
+
+export type NotificationsScalarFieldEnum = (typeof NotificationsScalarFieldEnum)[keyof typeof NotificationsScalarFieldEnum]
+
+
 export const ChatsScalarFieldEnum = {
   id: 'id',
   lastMessageTime: 'lastMessageTime',
@@ -123,7 +137,8 @@ export const MessagesChatsScalarFieldEnum = {
   createdAt: 'createdAt',
   chatsId: 'chatsId',
   text: 'text',
-  authorId: 'authorId'
+  authorId: 'authorId',
+  isRead: 'isRead'
 } as const
 
 export type MessagesChatsScalarFieldEnum = (typeof MessagesChatsScalarFieldEnum)[keyof typeof MessagesChatsScalarFieldEnum]
