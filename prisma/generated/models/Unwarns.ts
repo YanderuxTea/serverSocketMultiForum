@@ -1252,6 +1252,11 @@ export type UnwarnsFindManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * Skip the first `n` Unwarns.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Unwarns.
+   */
   distinct?: Prisma.UnwarnsScalarFieldEnum | Prisma.UnwarnsScalarFieldEnum[]
 }
 

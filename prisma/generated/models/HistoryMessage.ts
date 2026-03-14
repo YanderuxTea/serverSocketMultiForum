@@ -1271,6 +1271,11 @@ export type HistoryMessageFindManyArgs<ExtArgs extends runtime.Types.Extensions.
    * Skip the first `n` HistoryMessages.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of HistoryMessages.
+   */
   distinct?: Prisma.HistoryMessageScalarFieldEnum | Prisma.HistoryMessageScalarFieldEnum[]
 }
 

@@ -1167,6 +1167,11 @@ export type StatusesFindManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Skip the first `n` Statuses.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Statuses.
+   */
   distinct?: Prisma.StatusesScalarFieldEnum | Prisma.StatusesScalarFieldEnum[]
 }
 

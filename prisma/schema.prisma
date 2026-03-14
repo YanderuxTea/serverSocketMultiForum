@@ -134,7 +134,7 @@ model ActivityUser {
 model Reaction {
   id              String         @id @default(uuid())
   activityUser    ActivityUser[]
-  messagesPosts   MessagesPosts  @relation(fields: [messagesPostsId], references: [id])
+  messagesPosts   MessagesPosts  @relation(fields: [messagesPostsId], references: [id], onDelete: Cascade)
   messagesPostsId String
   reactionType    ReactionType
   createdAt       DateTime       @default(now())

@@ -1357,6 +1357,11 @@ export type SubCategoriesFindManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Skip the first `n` SubCategories.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of SubCategories.
+   */
   distinct?: Prisma.SubCategoriesScalarFieldEnum | Prisma.SubCategoriesScalarFieldEnum[]
 }
 

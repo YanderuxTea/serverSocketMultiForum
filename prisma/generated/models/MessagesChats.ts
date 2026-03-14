@@ -1283,6 +1283,11 @@ export type MessagesChatsFindManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Skip the first `n` MessagesChats.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of MessagesChats.
+   */
   distinct?: Prisma.MessagesChatsScalarFieldEnum | Prisma.MessagesChatsScalarFieldEnum[]
 }
 
